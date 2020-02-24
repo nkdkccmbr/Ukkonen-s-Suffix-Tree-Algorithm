@@ -88,6 +88,67 @@ class Node:
         v = 0
         Node.__draw__(root, chars, v, ed)
 
+    @staticmethod
+    def __inner_node__(rnode, chars, v, ed='#'):
+        l = len(chars)
+        edges = rnode.getoutedges().items()
+        nogc = []
+        hasgc = []
+        gc = []
+        maxlen = len(chars) + 6
+        for edg in edges:
+            if v == 0:
+                if edg[1][3].getoutedges() is None:
+                    nogc.append(edg)
+                else:
+                    hasgc.append(edg)
+            else:
+                if edg[1][3].getoutedges() is None:
+                    hasgc.append(edg)
+                else:
+                    nogc.append(edg)
+        gc.extend(hasgc)
+        gc.extend(nogc)
+        inner_nodes = []
+        for k, (parent, s, t, node) in gc:
+            if ed == '#':
+                if t == '#':
+                    t = l
+            else:
+                if t == '#':
+                    t = ed
+            linkid = ''
+            if node.getsuffixlink() is not None:
+                linkid = '->' + str(node.getsuffixlink().getid())
+
+            c = chars[s:t+1]
+            if c=='$' or (not c.endswith('$')):
+                inner_nodes.append((c,v))
+            if node.getoutedges() is not None:
+                inner_nodes += Node.__inner_node__(node, chars, v + 1, ed)
+        return inner_nodes
+
+    @staticmethod
+    def inner_node(root, chars, ed='#'):
+        v = 0
+        inner_nodes = Node.__inner_node__(root, chars, v, ed)
+
+        ret = []
+        stack = []
+        for inner_node in inner_nodes:
+            # root直下
+            if inner_node[1] == 0:
+                stack = []
+            stack.append(inner_node[0])
+            if inner_node[0] == '$':
+                s = ''.join(stack)
+                if len(s)>1:
+                    ret.append(s[:-1])
+                    for i in range(inner_node[1]):
+                        stack.pop()
+
+        return ret
+
 
 def build(chars, regularize=False):
     root = Node(None, None, None)
@@ -250,8 +311,10 @@ def hop(ind, actnode, actkey, actlen, remains, ind_remainder):
     return actnode, actkey, actlen, ind_remainder
 
 
-if __name__ == "__main__":
-    docs = ['abcabxabcd', 'dedododeeodoeodooedeeododooodoede$', 'ooooooooo', 'mississippi']
+if __name__ == '__main__':
+    docs = ['abracadabra']
     for text in docs:
         tree, pst = build(text, regularize=True)
+        inner_nodes = Node.inner_node(tree, pst, ed='#')
+        print(inner_nodes)
         Node.draw(tree, pst, ed='#')
